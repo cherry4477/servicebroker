@@ -1,0 +1,54 @@
+{
+  "services": [
+    {
+      "id": "cb2d4021-5fbc-45c2-92a9-9584583b7ce5",
+      "name": "PostgreSQL",
+      "description": "A Postgresql DataBase",
+      "bindable": true,
+      "tags": [
+        "postgresql",
+        "database"
+      ],
+      "plan_updateable": false,
+      "plans": [
+        {
+          "id": "bd9a94f2-5718-4dde-a773-61ff4ad9e843",
+          "name": "Experimental",
+          "description": "share a postgresql database in one instance",
+          "free": true,
+          "metadata": {
+            "displayName": "Shared and Free",
+            "bullets": [
+              "20 GB of Disk",
+              "20 connections"
+            ],
+            "costs": [
+              {
+                "amount": {
+                  "eur": 49,
+                  "usd": 99
+                },
+                "unit": "MONTHLY"
+              },
+              {
+                "amount": {
+                  "eur": 0.49,
+                  "usd": 0.99
+                },
+                "unit": "1GB of messages over 20GB"
+              }
+            ]
+          }
+        }
+      ],
+      "metadata": {
+        "displayName": "Postgresql",
+        "imageUrl": "http://www.postgresql.org/media/img/layout/hdr_left.png",
+        "longDescription": "the world most advanced open source database",
+        "providerDisplayName": "Asiainfo",
+        "documentationUrl": "http://www.postgresql.org/docs/",
+        "supportUrl": "http://www.postgresql.org/"
+      }
+    }
+  ]
+}
