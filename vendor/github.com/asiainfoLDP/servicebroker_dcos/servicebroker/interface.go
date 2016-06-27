@@ -6,7 +6,7 @@ type ServiceProvider interface {
 	// GetCatalog returns the catalog of services managed by this broker
 	GetCatalog() (*Catalog, *ServiceProviderError)
 
-	//// CreateService creates a service instance for specific plan
+	// CreateService creates a service instance for specific plan
 	//CreateService(r *ServiceCreationRequest) (*ServiceCreationResponse, *ServiceProviderError)
 	//
 	//// DeleteService deletes previously created service instance

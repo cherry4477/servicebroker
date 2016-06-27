@@ -1,26 +1,33 @@
 package main
 
 import (
+	"fmt"
 	"github.com/asiainfoLDP/servicebroker_dcos/servicebroker"
 	"io"
-	"net/http"
+	"io/ioutil"
 	"log"
+	"net/http"
 )
 
-var catalogInfo = new(catalog)
-
-func init() {
-	if err := jsonFileUnMarshal("catalog.json", catalogInfo); err != nil  {
-		log.Fatalf("init catalog config err %v\n", err)
+//curl 127.0.0.1:5000/v2/catalog
+func catalogHandler(w http.ResponseWriter, r *http.Request) {
+	data, err := ioutil.ReadFile(Catalog_Info_Path)
+	if err != nil {
+		log.Printf("read catalog err %v\n", err)
+		io.WriteString(w, fmt.Sprint(servicebroker.NewServiceProviderError(400, err)))
+		return
 	}
 
-	if len(catalogInfo.Services) == 0 {
-		log.Fatal("load catalog config nil.")
-	}
+	io.WriteString(w, string(data))
+	w.WriteHeader(200)
+	return
 }
 
-type catalog servicebroker.Catalog
+func getCatalog() (*servicebroker.Catalog, error) {
+	c := new(servicebroker.Catalog)
+	if err := jsonFileUnMarshal(Catalog_Info_Path, c); err != nil {
+		return nil, err
+	}
 
-func (s *catalog) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	io.WriteString(w, "URL"+r.URL.String())
+	return c, nil
 }

@@ -84,44 +84,44 @@ type App struct {
 	Mem             uint32            `json:"mem"`
 	Disk            uint32            `json:"disk"`
 	Instances       uint32            `json:"instances"`
-	Container       *container        `json:"container,omitempty"`
+	Container       *Container        `json:"container,omitempty"`
 	Env             map[string]string `json:"env,omitempty"`
-	UpgradeStrategy *upgradeStrategy  `json:"upgradestrategy,omitempty"`
+	UpgradeStrategy *UpgradeStrategy  `json:"upgradestrategy,omitempty"`
 	Deployments     []deploy          `json:"deployments,omitempty"`
 }
 
-type container struct {
+type Container struct {
 	Type    string   `json:"type"`
-	Volumes []volume `json:"volumes, omitempty"`
-	Docker  docker   `json:"docker"`
+	Volumes []Volume `json:"volumes, omitempty"`
+	Docker  Docker   `json:"docker"`
 }
 
-type docker struct {
+type Docker struct {
 	Image          string        `json:"image"`
 	NetWork        string        `json:"network"`
-	PortMappings   []portMapping `json:"portmappings"`
+	PortMappings   []PortMapping `json:"portmappings"`
 	ForcePullImage bool          `json:"forcepullimage"`
 }
 
-type portMapping struct {
+type PortMapping struct {
 	ContainerPort uint32 `json:"containerport"`
 	HostPort      uint32 `json:"hostport"`
 	ServicePort   uint32 `json:"servicePort"`
 	Protocol      string `json:"protocol"`
 }
 
-type volume struct {
+type Volume struct {
 	ContainerPath string      `json:"containerpath"`
 	Mode          string      `json:"mode"`
-	Persistent    *persistent `json:"persistent,omitempty"`
+	Persistent    *Persistent `json:"persistent,omitempty"`
 	HostPath      string      `json:"hostpath,omitempty"`
 }
 
-type persistent struct {
+type Persistent struct {
 	Size uint `json:"size"`
 }
 
-type upgradeStrategy struct {
+type UpgradeStrategy struct {
 	MinimumHealthCapacity uint32 `json:"minimumhealthcapacity"`
 	MaximumOverCapacity   uint32 `json:"maximumovercapacity"`
 }

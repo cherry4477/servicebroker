@@ -5,6 +5,8 @@ import (
 )
 
 const (
+	ErrorInstanceParamInvalid = 400
+
 	// ErrorServiceExists raised if instance already exists
 	ErrorInstanceExists = 409
 
@@ -34,6 +36,7 @@ func (e *ServiceProviderError) String() string {
 
 // GetErrorCodeName resolves error code to its string value
 var GetServiceProviderErrorCodeName = map[int]string{
+	400: "ErrorInstanceParamInvalid",
 	409: "ErrorInstanceExists",
 	410: "ErrorInstanceNotFound",
 	500: "ErrorServerException",

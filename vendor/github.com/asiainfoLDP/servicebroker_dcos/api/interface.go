@@ -6,7 +6,7 @@ type Interface interface {
 	TasksInterface
 }
 
-func NewInterface(host, token string) (Interface, error) {
+func NewClientInterface(host, token string) (Interface, error) {
 	c := authConfig(token)
 	a := &dcosOption{auth: &c, host: host}
 	if acs_token, err := a.auth.Exchange(host); err != nil {

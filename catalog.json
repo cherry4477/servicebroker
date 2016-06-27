@@ -1,53 +1,47 @@
 {
   "services": [
     {
-      "id": "cb2d4021-5fbc-45c2-92a9-9584583b7ce5",
-      "name": "PostgreSQL",
-      "description": "A Postgresql DataBase",
+      "id": "04EB4D8F-15BF-43F2-B4DA-E7A243E21C83",
+      "name": "MySQL",
+      "description": "A MySQL DataBase",
       "bindable": true,
       "tags": [
-        "postgresql",
+        "MySQL",
         "database"
       ],
       "plan_updateable": false,
       "plans": [
         {
-          "id": "bd9a94f2-5718-4dde-a773-61ff4ad9e843",
+          "id": "3C7BAF72-0DF4-420D-B365-B5CF09409C70",
           "name": "Experimental",
-          "description": "share a postgresql database in one instance",
+          "description": "a standalone mysql database in one instance",
           "free": true,
           "metadata": {
-            "displayName": "Shared and Free",
+            "displayName": "standalone and Free",
             "bullets": [
-              "20 GB of Disk",
-              "20 connections"
+              "1 Core",
+              "1G Mem",
+              "50G Disk"
             ],
             "costs": [
-              {
-                "amount": {
-                  "eur": 49,
-                  "usd": 99
-                },
-                "unit": "MONTHLY"
-              },
               {
                 "amount": {
                   "eur": 0.49,
                   "usd": 0.99
                 },
-                "unit": "1GB of messages over 20GB"
+                "unit": "1 Core;1G Mem;50G Disk"
               }
             ]
           }
         }
       ],
       "metadata": {
-        "displayName": "Postgresql",
-        "imageUrl": "http://www.postgresql.org/media/img/layout/hdr_left.png",
-        "longDescription": "the world most advanced open source database",
+        "displayName": "MySQL",
+        "documentationUrl": "http://docs.mysql.com",
+        "imageUrl": "pub/assets/Mysql.png",
+        "longDescription": "OpenSoure RDMBS MySQ",
         "providerDisplayName": "Asiainfo",
-        "documentationUrl": "http://www.postgresql.org/docs/",
-        "supportUrl": "http://www.postgresql.org/"
+        "supportUrl": "http://www.mysql.com"
       }
     }
   ]
