@@ -11,8 +11,9 @@ import (
 )
 
 var (
-	ErrNotFound     = errors.New("not found")
-	ErrUnauthorized = errors.New("unauthorized")
+	ErrNotFound         = errors.New("not found")
+	ErrUnauthorized     = errors.New("unauthorized")
+	ErrConflictInstance = errors.New("confict instance")
 )
 
 func httpPost(url string, bodyType string, body interface{}, credential ...string) ([]byte, error) {
@@ -71,7 +72,6 @@ func httpGet(url string, credential ...string) ([]byte, error) {
 }
 
 func httpAction(method, url string, bodyType string, body interface{}, credential ...string) ([]byte, error) {
-
 	var req *http.Request
 	var err error
 	switch t := body.(type) {
@@ -101,12 +101,12 @@ func httpAction(method, url string, bodyType string, body interface{}, credentia
 		return nil, fmt.Errorf("[http] read err %s, %s\n", url, err)
 	}
 
-	if resp.StatusCode < 200 || resp.StatusCode > 300 {
-		return nil, fmt.Errorf("[http] status err %s, %d\n", url, resp.StatusCode)
+	if resp.StatusCode == 409 {
+		return nil, ErrConflictInstance
 	}
 
-	if resp.StatusCode >= 400 {
-		return b, fmt.Errorf("[http] status err %s, %d\n", url, resp.StatusCode)
+	if resp.StatusCode < 200 || resp.StatusCode > 300 {
+		return nil, fmt.Errorf("[http] status err %s, %d\n", url, resp.StatusCode)
 	}
 
 	return b, nil

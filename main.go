@@ -1,21 +1,22 @@
 package main
 
 import (
+	"github.com/asiainfoLDP/servicebroker_dcos/util/auth"
 	"github.com/gorilla/mux"
 	"net/http"
 )
-
-const Catalog_Info_Path = "catalog.json"
 
 var router = mux.NewRouter()
 
 func main() {
 
+	admin := auth.NewWrapper("michael", "123456")
+
 	http.Handle("/", router)
-	router.HandleFunc("/v2/catalog", catalogHandler).Methods("GET")
-	router.HandleFunc("/v2/service_instances/{instance_id}", httpHandlerMaker(createServiceInstanceHandler)).Methods("PUT")
-	router.HandleFunc("/v2/service_instances/{instance_id}/service_bindings/{binding_id}", httpHandlerMaker(bindServiceInstanceHandler)).Methods("PUT")
-	router.HandleFunc("/v2/service_instances/{instance_id}", httpHandlerMaker(deleteServiceInstanceHandler))
-	router.HandleFunc("/v2/service_instances/{instance_id}/service_bindings/{binding_id}", httpHandlerMaker(unbindServiceInstanceHandler)).Methods("DELETE")
+	router.HandleFunc("/v2/catalog", middlerCatalog(admin, catalogHandler)).Methods("GET")
+	router.HandleFunc("/v2/service_instances/{instance_id}", middler(admin, provisionHandler)).Methods("PUT")
+	router.HandleFunc("/v2/service_instances/{instance_id}/service_bindings/{binding_id}", middler(admin, bindHandler)).Methods("PUT")
+	router.HandleFunc("/v2/service_instances/{instance_id}", middler(admin, deProvisionHandler))
+	router.HandleFunc("/v2/service_instances/{instance_id}/service_bindings/{binding_id}", middler(admin, unbindServiceInstanceHandler)).Methods("DELETE")
 	http.ListenAndServe(":5000", router)
 }

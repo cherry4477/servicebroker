@@ -2,14 +2,13 @@ package main
 
 import (
 	"encoding/json"
-	"errors"
-	"fmt"
 	dcosapi "github.com/asiainfoLDP/servicebroker_dcos/api"
-	"github.com/asiainfoLDP/servicebroker_dcos/servicebroker"
+	broker "github.com/asiainfoLDP/servicebroker_dcos/servicebroker"
 	"io"
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 )
 
 var (
@@ -39,120 +38,99 @@ func init() {
 
 type instanceId string
 
-//curl -XPUT 127.0.0.1:5000/v2/service_instances/123 -d '{"organization_guid": "org-guid-here", "plan_id": "3C7BAF72-0DF4-420D-B365-B5CF09409C70","service_id":"04EB4D8F-15BF-43F2-B4DA-E7A243E21C83"}'
-func createServiceInstanceHandler(w http.ResponseWriter, r *http.Request, vars map[string]string) {
+//curl -XPUT michael:123456@127.0.0.1:5000/v2/service_instances/123 -d '{"organization_guid": "org-guid-here", "plan_id": "3C7BAF72-0DF4-420D-B365-B5CF09409C70","service_id":"04EB4D8F-15BF-43F2-B4DA-E7A243E21C83"}'
+func provisionHandler(w http.ResponseWriter, r *http.Request, vars map[string]string) {
 	id := vars["instance_id"]
-	if len(id) == 0 {
-		w.WriteHeader(400)
-		io.WriteString(w, fmt.Sprint(servicebroker.NewServiceProviderError(400, errors.New("request param service_instances must not be nil."))))
+
+	var details broker.ProvisionDetails
+	if err := json.NewDecoder(r.Body).Decode(&details); err != nil {
+		respondUnprocessable(w, err)
 		return
 	}
 
-	newInstanceReq := new(servicebroker.InstanceRequest)
-	if err := json.NewDecoder(r.Body).Decode(newInstanceReq); err != nil {
-		w.WriteHeader(500)
-		io.WriteString(w, fmt.Sprint(servicebroker.NewServiceProviderError(500, err)))
-		return
-	}
+	acceptsIncompleteFlag, _ := strconv.ParseBool(r.URL.Query().Get("accepts_incomplete"))
 
-	catalog, err := getCatalog()
+	serviceBroker, err := getServiceBroker(details.ServiceID)
 	if err != nil {
-		w.WriteHeader(500)
-		io.WriteString(w, fmt.Sprint(servicebroker.NewServiceProviderError(500, err)))
+		respond(w, http.StatusInternalServerError, ErrorResponse{
+			Description: err.Error(),
+		})
 		return
 	}
 
-	if err := newInstanceReq.Validate(catalog); err != nil {
-		w.WriteHeader(400)
-		io.WriteString(w, fmt.Sprint(servicebroker.NewServiceProviderError(400, err)))
-		return
-	}
-
-	var svc *servicebroker.Service
-	if svc = catalog.GetService(newInstanceReq.ServiceId); svc == nil {
-		w.WriteHeader(400)
-		err := fmt.Errorf("no such service_id %s", newInstanceReq.ServiceId)
-		io.WriteString(w, fmt.Sprint(servicebroker.NewServiceProviderError(400, err)))
-		return
-	} else if plan := svc.GetPlan(newInstanceReq.PlanId); plan == nil {
-		w.WriteHeader(400)
-		err := fmt.Errorf("no such plan_id %s", newInstanceReq.PlanId)
-		io.WriteString(w, fmt.Sprint(servicebroker.NewServiceProviderError(400, err)))
-		return
-	}
-
-	a := newMysqlApp(id)
-	b, _ := json.Marshal(a)
-	fmt.Printf("%s\n", b)
-	mysqlApp, err := dcosClient.Application().Create(a)
+	provisionResponse, err := serviceBroker.Provision(id, details, acceptsIncompleteFlag)
 	if err != nil {
-		w.WriteHeader(400)
-		err := fmt.Errorf("create app(%v) err %v", mysqlApp, err)
-		io.WriteString(w, fmt.Sprint(servicebroker.NewServiceProviderError(400, err)))
+		switch err {
+		case broker.ErrInstanceAlreadyExists:
+			respond(w, http.StatusConflict, struct{}{})
+		case broker.ErrInstanceLimitMet:
+			respond(w, http.StatusInternalServerError, ErrorResponse{
+				Description: err.Error(),
+			})
+		case broker.ErrAsyncRequired:
+			respond(w, 422, ErrorResponse{
+				Error:       "AsyncRequired",
+				Description: err.Error(),
+			})
+		default:
+			respond(w, http.StatusInternalServerError, ErrorResponse{
+				Description: err.Error(),
+			})
+		}
 		return
 	}
 
-	temCache[instanceId(id)] = mysqlApp
-
-	io.WriteString(w, "{}")
-	return
+	if provisionResponse.IsAsync {
+		respond(w, http.StatusAccepted, broker.ProvisioningResponse{
+			DashboardURL: provisionResponse.DashboardURL,
+		})
+	} else {
+		respond(w, http.StatusCreated, broker.ProvisioningResponse{
+			DashboardURL: provisionResponse.DashboardURL,
+		})
+	}
 }
 
 //curl -XPUT 127.0.0.1:5000/v2/service_instances/123/service_bindings/456 -d '{"app_gui": "org-guid-here", "plan_id": "3C7BAF72-0DF4-420D-B365-B5CF09409C70","service_id":"04EB4D8F-15BF-43F2-B4DA-E7A243E21C83"}'
-func bindServiceInstanceHandler(w http.ResponseWriter, r *http.Request, vars map[string]string) {
-	instance_id, binding_id := vars["instance_id"], vars["binding_id"]
-	if len(instance_id) == 0 {
-		w.WriteHeader(400)
-		io.WriteString(w, fmt.Sprint(servicebroker.NewServiceProviderError(400, errors.New("request param service_instances must not be nil."))))
+func bindHandler(w http.ResponseWriter, r *http.Request, vars map[string]string) {
+	instanceID := vars["instance_id"]
+	bindingID := vars["binding_id"]
+
+	var details broker.BindDetails
+	if err := json.NewDecoder(r.Body).Decode(&details); err != nil {
+		respond(w, statusUnprocessableEntity, ErrorResponse{
+			Description: err.Error(),
+		})
 		return
 	}
-
-	if len(binding_id) == 0 {
-		w.WriteHeader(400)
-		io.WriteString(w, fmt.Sprint(servicebroker.NewServiceProviderError(400, errors.New("request param binding_id must not be nil."))))
-		return
-	}
-
-	bindInstanceReq := new(servicebroker.ServiceBindingRequest)
-	if err := json.NewDecoder(r.Body).Decode(bindInstanceReq); err != nil {
-		w.WriteHeader(500)
-		io.WriteString(w, fmt.Sprint(servicebroker.NewServiceProviderError(500, err)))
-		return
-	}
-
-	app, ok := temCache[instanceId(instance_id)]
-	if !ok {
-		w.WriteHeader(500)
-		io.WriteString(w, fmt.Sprint(servicebroker.NewServiceProviderError(500, errors.New("no found service instance %s."))))
-		return
-	}
-
-	task, err := dcosClient.Task().Get(app.Id)
+	serviceBroker, err := getServiceBroker(details.ServiceID)
 	if err != nil {
-		w.WriteHeader(500)
-		err := fmt.Errorf("dcos get task(%s) err %v", app.Id, err)
-		io.WriteString(w, fmt.Sprint(servicebroker.NewServiceProviderError(500, err)))
+		respond(w, http.StatusInternalServerError, ErrorResponse{
+			Description: err.Error(),
+		})
 		return
 	}
 
-	rep := servicebroker.ServiceBindingResponse{
-		Credentials: map[string]string{
-			"uri":      fmt.Sprintf("mysql://%s:%s@%s:%d/%s", app.Env["MYSQL_USER"], app.Env["MYSQL_PASSWORD"], task.Host, task.Ports[0], app.Env["MYSQL_DATABASE"]),
-			"host":     task.Host,
-			"port":     fmt.Sprintf("%d", task.Ports[0]),
-			"username": app.Env["MYSQL_USER"],
-			"password": app.Env["MYSQL_PASSWORD"],
-			"database": app.Env["MYSQL_DATABASE"],
-		},
-	}
-
-	if err := json.NewEncoder(w).Encode(rep); err != nil {
-		w.WriteHeader(500)
-		io.WriteString(w, fmt.Sprint(servicebroker.NewServiceProviderError(500, err)))
+	binding, err := serviceBroker.Bind(instanceID, bindingID, details)
+	if err != nil {
+		switch err {
+		case broker.ErrInstanceDoesNotExist:
+			respond(w, http.StatusNotFound, ErrorResponse{
+				Description: err.Error(),
+			})
+		case broker.ErrBindingAlreadyExists:
+			respond(w, http.StatusConflict, ErrorResponse{
+				Description: err.Error(),
+			})
+		default:
+			respond(w, http.StatusInternalServerError, ErrorResponse{
+				Description: err.Error(),
+			})
+		}
 		return
 	}
 
-	return
+	respond(w, http.StatusCreated, binding)
 }
 
 //curl -XDELETE 127.0.0.1:5000/v2/service_instances/123/service_bindings/456
@@ -161,28 +139,43 @@ func unbindServiceInstanceHandler(w http.ResponseWriter, r *http.Request, vars m
 	return
 }
 
-//curl -XDELETE 127.0.0.1:5000/v2/service_instances/123
-func deleteServiceInstanceHandler(w http.ResponseWriter, r *http.Request, vars map[string]string) {
-	instance_id := vars["instance_id"]
-	if len(instance_id) == 0 {
-		w.WriteHeader(400)
-		io.WriteString(w, fmt.Sprint(servicebroker.NewServiceProviderError(400, errors.New("request param service_instances must not be nil."))))
+//curl -XDELETE 127.0.0.1:5000/v2/service_instances/123?service_id=04EB4D8F-15BF-43F2-B4DA-E7A243E21C83\&plan_id=3C7BAF72-0DF4-420D-B365-B5CF09409C70
+func deProvisionHandler(w http.ResponseWriter, r *http.Request, vars map[string]string) {
+	instanceID := vars["instance_id"]
+
+	details := broker.DeprovisionDetails{
+		PlanID:    r.FormValue("plan_id"),
+		ServiceID: r.FormValue("service_id"),
+	}
+
+	asyncAllowed := r.FormValue("accepts_incomplete") == "true"
+
+	serviceBroker, err := getServiceBroker(details.ServiceID)
+	if err != nil {
+		respond(w, http.StatusInternalServerError, ErrorResponse{
+			Description: err.Error(),
+		})
 		return
 	}
 
-	mysqlApp, ok := temCache[instanceId(instance_id)]
-	if !ok {
-		w.WriteHeader(410)
-		io.WriteString(w, "{}")
+	isAsync, err := serviceBroker.Deprovision(instanceID, details, asyncAllowed)
+	if err != nil {
+		switch err {
+		case broker.ErrInstanceDoesNotExist:
+			respond(w, http.StatusGone, struct{}{})
+		case broker.ErrAsyncRequired:
+			respond(w, 422, struct{}{})
+		default:
+			respond(w, http.StatusInternalServerError, ErrorResponse{
+				Description: err.Error(),
+			})
+		}
 		return
 	}
 
-	if err := dcosClient.Application().Delete(mysqlApp.Id); err != nil {
-		w.WriteHeader(500)
-		io.WriteString(w, fmt.Sprint(servicebroker.NewServiceProviderError(500, err)))
-		return
+	if isAsync {
+		respond(w, http.StatusAccepted, struct{}{})
+	} else {
+		respond(w, http.StatusOK, struct{}{})
 	}
-
-	io.WriteString(w, "{}")
-	return
 }

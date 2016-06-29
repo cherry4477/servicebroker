@@ -13,6 +13,8 @@ const (
 	// ErrorInstanceNotFound raised if instance not found
 	ErrorInstanceNotFound = 410
 
+	ErrorUnprocessableEntity = 422
+
 	// ErrorServerException raised on server side error
 	ErrorServerException = 500
 )
@@ -39,6 +41,7 @@ var GetServiceProviderErrorCodeName = map[int]string{
 	400: "ErrorInstanceParamInvalid",
 	409: "ErrorInstanceExists",
 	410: "ErrorInstanceNotFound",
+	422: "ErrorUnprocessableEntity",
 	500: "ErrorServerException",
 }
 

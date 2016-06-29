@@ -62,25 +62,3 @@ type ServiceMeta struct {
 	DocURL              string `json:"documentationUrl"`
 	SupportURL          string `json:"supportUrl"`
 }
-
-type InstanceRequest struct {
-	ServiceId        string `json:"service_id"`
-	PlanId           string `json:"plan_id"`
-	OrganizationGuid string `json:"organization_guid"`
-	SpaceGuid        string `json:"space_guid"`
-	//Incomplete       bool        `json:"accepts_incomplete, omitempty"`
-	Parameters interface{} `json:"parameters, omitempty"`
-}
-
-type ServiceBindingRequest struct {
-	InstanceID string `json:"-"`
-	BindingID  string `json:"-"`
-	ServiceID  string `json:"service_id"`
-	PlanID     string `json:"plan_id"`
-	AppGUID    string `json:"app_guid"`
-}
-
-type ServiceBindingResponse struct {
-	Credentials map[string]string `json:"credentials"`
-	//SyslogDrainURL string            `json:"syslog_drain_url"`
-}

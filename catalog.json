@@ -19,9 +19,9 @@
           "metadata": {
             "displayName": "standalone and Free",
             "bullets": [
-              "1 Core",
-              "1G Mem",
-              "50G Disk"
+              "1.5 Core",
+              "1000 Mem(MB)",
+              "50 Disk(GB)"
             ],
             "costs": [
               {
@@ -29,7 +29,7 @@
                   "eur": 0.49,
                   "usd": 0.99
                 },
-                "unit": "1 Core;1G Mem;50G Disk"
+                "unit": "1 Cpu;1000 Mem(MB);500 Disk(GB)"
               }
             ]
           }
