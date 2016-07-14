@@ -16,6 +16,12 @@ func (c *Catalog) RangeCatalogFunc(fn func(*Service)) {
 	}
 }
 
+func (c *Catalog) Merge(newCatalog *Catalog) {
+	if newCatalog != nil {
+		c.Services = append(c.Services, newCatalog.Services...)
+	}
+}
+
 func (s *Service) GetPlan(id string) *Plan {
 	for _, plan := range s.Plans {
 		if plan.ID == id {

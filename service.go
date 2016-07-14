@@ -2,39 +2,11 @@ package main
 
 import (
 	"encoding/json"
-	dcosapi "github.com/asiainfoLDP/servicebroker_dcos/api"
-	broker "github.com/asiainfoLDP/servicebroker_dcos/servicebroker"
+	broker "github.com/asiainfoLDP/servicebroker"
 	"io"
-	"log"
 	"net/http"
-	"os"
 	"strconv"
 )
-
-var (
-	dcosClient dcosapi.Interface
-	temCache   = map[instanceId]*dcosapi.App{}
-)
-
-func init() {
-	dcosHost := os.Getenv("Dcos_Host_Addr")
-	if dcosHost == "" {
-		log.Fatal("env Dcos_Host_Addr must not be nil.")
-	}
-
-	dcosToken := os.Getenv("Dcos_Token")
-	if dcosToken == "" {
-		log.Fatal("env Dcos_Token must not be nil.")
-	}
-
-	var err error
-	dcosClient, err = dcosapi.NewClientInterface(dcosHost, dcosToken)
-	if err != nil {
-		log.Fatalf("init dcos(%s) client err %v\n", dcosHost, err)
-	}
-
-	log.Printf("init dcos(%s) client success.", dcosHost)
-}
 
 type instanceId string
 

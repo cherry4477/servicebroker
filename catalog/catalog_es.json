@@ -1,0 +1,46 @@
+{
+  "services": [
+    {
+      "id": "45DDB6EA-7EB1-46B5-8E9A-514A7078A6EA",
+      "name": "ElasticSearch",
+      "description": "A ElasticSearch DataBase",
+      "bindable": true,
+      "tags": [
+        "ElasticSearch",
+        "Search"
+      ],
+      "plan_updateable": false,
+      "plans": [
+        {
+          "id": "C8E570F3-17E5-4F69-A4C3-6789E6FA62E8",
+          "name": "Experimental",
+          "description": "a shard elastic search",
+          "free": true,
+          "metadata": {
+            "displayName": "shard and Free",
+            "bullets": [
+              "1 index"
+            ],
+            "costs": [
+              {
+                "amount": {
+                  "eur": 0.49,
+                  "usd": 0.99
+                },
+                "unit": "1 index"
+              }
+            ]
+          }
+        }
+      ],
+      "metadata": {
+        "displayName": "Elastic Search",
+        "documentationUrl": "https://www.elastic.co/products",
+        "imageUrl": "https://static-www.elastic.co/assets/blt6050efb80ceabd47/elastic-logo%20(2).svg?q=935",
+        "longDescription": "Elastic's open source solutions solve a growing list of search, log analysis, and analytics challenges across virtually every industry",
+        "providerDisplayName": "Asiainfo",
+        "supportUrl": "https://www.elastic.co"
+      }
+    }
+  ]
+}

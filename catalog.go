@@ -1,7 +1,7 @@
 package main
 
 import (
-	broker "github.com/asiainfoLDP/servicebroker_dcos/servicebroker"
+	broker "github.com/asiainfoLDP/servicebroker"
 	"log"
 	"net/http"
 	"regexp"
@@ -9,9 +9,11 @@ import (
 	"strings"
 )
 
+var allCatalogFilePaths = []string{}
+
 //curl 127.0.0.1:5000/v2/catalog
 func catalogHandler(w http.ResponseWriter, r *http.Request, _ map[string]string) {
-	l, err := getCatalog()
+	l, err := getCatalog("all")
 	if err != nil {
 		log.Println("[Get] /v2/catalog err %v\n", err)
 	}
@@ -19,13 +21,27 @@ func catalogHandler(w http.ResponseWriter, r *http.Request, _ map[string]string)
 	respond(w, http.StatusOK, l)
 }
 
-func getCatalog() (*broker.Catalog, error) {
-	c := new(broker.Catalog)
-	if err := jsonFileUnMarshal(Catalog_Info_Path, c); err != nil {
-		return nil, err
+func getCatalog(path string) (*broker.Catalog, error) {
+	catalogResult := new(broker.Catalog)
+
+	switch path {
+	case "all":
+		for _, childCatalogPath := range allCatalogFilePaths {
+			if another, err := getCatalog(childCatalogPath); err != nil {
+				log.Printf("get %s catalog err %v\n", childCatalogPath, err)
+				continue
+			} else {
+				catalogResult.Merge(another)
+			}
+		}
+
+	default:
+		if err := jsonFileUnMarshal(path, catalogResult); err != nil {
+			return nil, err
+		}
 	}
 
-	return c, nil
+	return catalogResult, nil
 }
 
 //1 Cpu;1000 Mem;50 Disk

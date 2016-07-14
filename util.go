@@ -8,12 +8,12 @@ import (
 	"os"
 
 	"errors"
-	broker "github.com/asiainfoLDP/servicebroker_dcos/servicebroker"
-	"github.com/asiainfoLDP/servicebroker_dcos/util/auth"
+	"github.com/1851616111/util/auth"
+	broker "github.com/asiainfoLDP/servicebroker"
 	"strings"
 )
 
-const Catalog_Info_Path = "catalog.json"
+const Catalog_Info_Path = "../catalog_mysql.json"
 
 const instanceIDLogKey = "instance-id"
 const instanceDetailsLogKey = "instance-details"

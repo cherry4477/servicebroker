@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	broker "github.com/asiainfoLDP/servicebroker_dcos/servicebroker"
+	broker "github.com/asiainfoLDP/servicebroker"
 	"log"
 	"strings"
 )
@@ -10,13 +10,13 @@ import (
 type BrokerKind string
 
 var (
-	brokerKinds          = []string{"mysql"}
+	brokerKinds          = []string{"elastic_search"}
 	serviceIDKindMapping = map[string]BrokerKind{}
 	kindToApiMappings    = map[BrokerKind]broker.ServiceBroker{}
 )
 
-func init() {
-	cs, err := getCatalog()
+func initCatalog() {
+	cs, err := getCatalog("all")
 	if err != nil {
 		log.Fatalf("init servicebroker service err %v\n", err)
 	}
@@ -55,11 +55,11 @@ func getServiceBroker(serviceID string) (broker.ServiceBroker, error) {
 		return nil, fmt.Errorf("unkown service_id(%s)'s kind", serviceID)
 	}
 
-	var i broker.ServiceBroker
-	i, ok = kindToApiMappings[kind]
+	var broker broker.ServiceBroker
+	broker, ok = kindToApiMappings[kind]
 	if !ok {
 		return nil, fmt.Errorf("unkown service_id(%s)'s impliment", serviceID)
 	}
 
-	return i, nil
+	return broker, nil
 }

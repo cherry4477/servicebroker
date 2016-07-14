@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/asiainfoLDP/servicebroker_dcos/util/auth"
+	"github.com/1851616111/util/auth"
 	"github.com/gorilla/mux"
 	"net/http"
 )
@@ -9,6 +9,7 @@ import (
 var router = mux.NewRouter()
 
 func main() {
+	initCatalog()
 
 	admin := auth.NewWrapper("michael", "123456")
 

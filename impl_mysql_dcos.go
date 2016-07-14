@@ -2,13 +2,55 @@ package main
 
 import (
 	"fmt"
-	dcosapi "github.com/asiainfoLDP/servicebroker_dcos/api"
-	broker "github.com/asiainfoLDP/servicebroker_dcos/servicebroker"
-	"github.com/asiainfoLDP/servicebroker_dcos/util/rand"
+	dcosapi "github.com/1851616111/dcos_client"
+	"github.com/1851616111/util/rand"
+	broker "github.com/asiainfoLDP/servicebroker"
+	"log"
+	"os"
+	"strconv"
+)
+
+var (
+	dcosClient              dcosapi.Interface
+	instanceTmpCache        = map[instanceId]*dcosapi.App{}
+	mysql_catalog_file_path string
 )
 
 func init() {
+	start, _ := strconv.ParseBool(os.Getenv("Dcos_Start"))
+	if start {
+		initDcos()
+	}
+}
+
+func initDcos() {
+
+	mysql_catalog_file_path = os.Getenv("Dcos_Catalog_Path")
+	if mysql_catalog_file_path == "" {
+		log.Fatal("env Dcos_Catalog_Path must not be nil.")
+	}
+	allCatalogFilePaths = append(allCatalogFilePaths, mysql_catalog_file_path)
+
+	dcosHost := os.Getenv("Dcos_Host_Addr")
+	if dcosHost == "" {
+		log.Fatal("env Dcos_Host_Addr must not be nil.")
+	}
+
+	dcosToken := os.Getenv("Dcos_Token")
+	if dcosToken == "" {
+		log.Fatal("env Dcos_Token must not be nil.")
+	}
+
+	var err error
+	dcosClient, err = dcosapi.NewClientInterface(dcosHost, dcosToken)
+	if err != nil {
+		log.Fatalf("init dcos(%s) client err %v\n", dcosHost, err)
+	}
+
+	brokerKinds = append(brokerKinds, "mysql")
 	kindToApiMappings[BrokerKind("mysql")] = &mysqlBroker{}
+
+	log.Printf("init dcos(%s) client success.", dcosHost)
 }
 
 type mysqlBroker struct{}
@@ -20,7 +62,7 @@ func (s *mysqlBroker) Provision(instanceID string, details broker.ProvisionDetai
 		return serviceSpec, err
 	}
 
-	catalog, err := getCatalog()
+	catalog, err := getCatalog(mysql_catalog_file_path)
 	if err != nil {
 		return serviceSpec, err
 	}
@@ -48,7 +90,7 @@ func (s *mysqlBroker) Provision(instanceID string, details broker.ProvisionDetai
 		return serviceSpec, err
 	}
 
-	temCache[instanceId(instanceID)] = mysqlApp
+	instanceTmpCache[instanceId(instanceID)] = mysqlApp
 
 	return serviceSpec, nil
 }
@@ -56,7 +98,7 @@ func (s *mysqlBroker) Provision(instanceID string, details broker.ProvisionDetai
 func (s *mysqlBroker) Bind(instanceID, bindingID string, details broker.BindDetails) (broker.Binding, error) {
 	binding := broker.Binding{}
 
-	app, ok := temCache[instanceId(instanceID)]
+	app, ok := instanceTmpCache[instanceId(instanceID)]
 	if !ok {
 		return binding, broker.ErrInstanceDoesNotExist
 	}
@@ -84,7 +126,7 @@ func (s *mysqlBroker) Deprovision(instanceID string, details broker.DeprovisionD
 	//	return asynFlag, errors.New("Sync mode is not supported")
 	//}
 
-	mysqlApp, ok := temCache[instanceId(instanceID)]
+	mysqlApp, ok := instanceTmpCache[instanceId(instanceID)]
 	if !ok {
 		return asynFlag, broker.ErrInstanceDoesNotExist
 	}
