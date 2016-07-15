@@ -10,6 +10,7 @@ import (
 	"errors"
 	"github.com/1851616111/util/auth"
 	broker "github.com/asiainfoLDP/servicebroker"
+	"path/filepath"
 	"strings"
 )
 
@@ -42,6 +43,12 @@ var errorMappings = map[string]error{
 }
 
 func jsonFileUnMarshal(path string, c interface{}) error {
+	var err error
+	if path, err = filepath.Abs(path); err != nil {
+		return err
+
+	}
+
 	file, err := os.Open(path)
 	if err != nil {
 		return err
@@ -76,7 +83,6 @@ func respond(w http.ResponseWriter, status int, response interface{}) {
 	err := encoder.Encode(response)
 	if err != nil {
 		fmt.Printf("response being attempted %d %#v\n", status, response)
-		fmt.Println(err)
 	}
 }
 

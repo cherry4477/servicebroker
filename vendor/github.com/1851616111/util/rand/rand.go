@@ -24,7 +24,11 @@ import (
 )
 
 var letters = []rune("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789")
+var lowerLetters = []rune("abcdefghijklmnopqrstuvwxyz0123456789")
+
 var numLetters = len(letters)
+var numLowerLetters = len(lowerLetters)
+
 var rng = struct {
 	sync.Mutex
 	rand *rand.Rand
@@ -62,6 +66,14 @@ func String(length int) string {
 	b := make([]rune, length)
 	for i := range b {
 		b[i] = letters[Intn(numLetters)]
+	}
+	return string(b)
+}
+
+func LowerString(length int) string {
+	b := make([]rune, length)
+	for i := range b {
+		b[i] = lowerLetters[Intn(numLowerLetters)]
 	}
 	return string(b)
 }

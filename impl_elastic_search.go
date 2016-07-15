@@ -5,13 +5,31 @@ import (
 	"os"
 	"strconv"
 
-	esapi "github.com/1851616111/elastic-client"
+	esapi "github.com/1851616111/elastic_client"
+	"github.com/1851616111/util/rand"
+	broker "github.com/asiainfoLDP/servicebroker"
+	"time"
+
+	"fmt"
+	"net"
+	"net/url"
 )
 
 var (
-	elasticClient          *esapi.Client
-	elasticCatalogFilePath string
+	elasticAddr             string
+	elasticHost             string
+	elasticPort             string
+	elasticClient           *esapi.Client
+	elasticCatalogFilePath  string
+	elasticInstanceTmpCache map[instanceId]elasticInfo
 )
+
+type elasticInfo struct {
+	username string
+	password string
+	role     string
+	index    string
+}
 
 func init() {
 	start, _ := strconv.ParseBool(os.Getenv("ElasticSearch_Start"))
@@ -33,6 +51,15 @@ func initElasticClient() {
 		log.Fatal("env ElasticSearch_Addr is nil")
 	}
 
+	u, err := url.Parse(addr)
+	if err != nil {
+		log.Fatalf("parse ElasticSearch_Addr(%s) err %v", addr, err)
+	}
+
+	if elasticHost, elasticPort, err = net.SplitHostPort(u.Host); err != nil {
+		log.Fatalf("parse ElasticSearch_Addr(%s) err %v", addr, err)
+	}
+
 	username := os.Getenv("ElasticSearch_Credential_Username")
 	if username == "" {
 		log.Fatal("env ElasticSearch_Credential_Username is nil")
@@ -43,7 +70,6 @@ func initElasticClient() {
 		log.Fatal("env ElasticSearch_Credential_Password is nil")
 	}
 
-	var err error
 	if elasticClient, err = esapi.NewClient(addr); err != nil {
 		log.Fatalf("init elastic search client err %v\n", err)
 	}
@@ -58,6 +84,7 @@ func registElasticBroker() {
 	}
 	allCatalogFilePaths = append(allCatalogFilePaths, elasticCatalogFilePath)
 
+	elasticInstanceTmpCache = map[instanceId]elasticInfo{}
 	brokerKinds = append(brokerKinds, "elasticsearch")
 	kindToApiMappings[BrokerKind("elasticsearch")] = &elasticBroker{}
 }
@@ -83,47 +110,60 @@ func (s *elasticBroker) Provision(instanceID string, details broker.ProvisionDet
 		return serviceSpec, errorMappings[bindingFieldMissingErrorKey]
 	}
 
-	costs := plan.Metadata.Costs[0].Unit
-	if len(costs) == 0 {
-		return serviceSpec, fmt.Errorf("missing mysql plan cost info")
-	}
+	indexName, roleName, userName, userPassword := rand.LowerString(20), rand.String(20), rand.String(20), rand.String(24)
 
-	planCostUnit := parsePlanUnit(costs)
-
-	app := newMysqlApp(instanceID, planCostUnit)
-	mysqlApp, err := dcosClient.Application().Create(app)
-	if err != nil {
-		if err == dcosapi.ErrConflictInstance {
-			return serviceSpec, broker.ErrInstanceAlreadyExists
-		}
+	newIndexOptions := *esapi.DefaultIndexOption
+	newIndexOptions.IndexName = indexName
+	if err := elasticClient.CreateIndex(&newIndexOptions); err != nil {
 		return serviceSpec, err
 	}
 
-	instanceTmpCache[instanceId(instanceID)] = mysqlApp
+	newRoleOptions := esapi.NewDefaultRoleOption(roleName, indexName)
+	if err := elasticClient.CreateRole(newRoleOptions); err != nil {
+		return serviceSpec, err
+	}
 
+	newUserOptions := &esapi.CreateUserOptions{
+		Name: userName,
+		User: esapi.User{
+			Password: userPassword,
+			Roles:    []string{roleName},
+			Metadata: map[string]string{
+				"time": time.Now().String(),
+				"kind": "servicebroker",
+			},
+		},
+	}
+	if err := elasticClient.CreateUser(newUserOptions); err != nil {
+		return serviceSpec, err
+	}
+
+	elasticInstanceTmpCache[instanceId(instanceID)] = elasticInfo{
+		username: userName,
+		password: userPassword,
+		role:     roleName,
+		index:    indexName,
+	}
+
+	fmt.Printf("[Info] elastic generate servicebroker %v\n", elasticInstanceTmpCache[instanceId(instanceID)])
 	return serviceSpec, nil
 }
 
 func (s *elasticBroker) Bind(instanceID, bindingID string, details broker.BindDetails) (broker.Binding, error) {
 	binding := broker.Binding{}
 
-	app, ok := instanceTmpCache[instanceId(instanceID)]
+	brokerInfo, ok := elasticInstanceTmpCache[instanceId(instanceID)]
 	if !ok {
 		return binding, broker.ErrInstanceDoesNotExist
 	}
 
-	task, err := dcosClient.Task().Get(app.Id)
-	if err != nil {
-		return binding, fmt.Errorf("missing mysql instance %s ", instanceID)
-	}
-
 	binding.Credentials = map[string]string{
-		"uri":      fmt.Sprintf("mysql://%s:%s@%s:%d/%s", app.Env["MYSQL_USER"], app.Env["MYSQL_PASSWORD"], task.Host, task.Ports[0], app.Env["MYSQL_DATABASE"]),
-		"host":     task.Host,
-		"port":     fmt.Sprintf("%d", task.Ports[0]),
-		"username": app.Env["MYSQL_USER"],
-		"password": app.Env["MYSQL_PASSWORD"],
-		"database": app.Env["MYSQL_DATABASE"],
+		"uri":      fmt.Sprintf("%s:%s@%s:%s/%s", brokerInfo.username, brokerInfo.password, elasticHost, elasticPort, brokerInfo.index),
+		"host":     elasticHost,
+		"port":     elasticPort,
+		"username": brokerInfo.username,
+		"password": brokerInfo.password,
+		"database": brokerInfo.index,
 	}
 
 	return binding, nil
@@ -135,12 +175,19 @@ func (s *elasticBroker) Deprovision(instanceID string, details broker.Deprovisio
 	//	return asynFlag, errors.New("Sync mode is not supported")
 	//}
 
-	mysqlApp, ok := instanceTmpCache[instanceId(instanceID)]
+	brokerInfo, ok := elasticInstanceTmpCache[instanceId(instanceID)]
 	if !ok {
 		return asynFlag, broker.ErrInstanceDoesNotExist
 	}
 
-	if err := dcosClient.Application().Delete(mysqlApp.Id); err != nil {
+	var err error
+	if err = elasticClient.DeleteIndex(brokerInfo.index); err != nil {
+		return asynFlag, err
+	}
+	if err = elasticClient.DeleteUser(brokerInfo.username); err != nil {
+		return asynFlag, err
+	}
+	if err = elasticClient.DeleteRole(brokerInfo.role); err != nil {
 		return asynFlag, err
 	}
 
